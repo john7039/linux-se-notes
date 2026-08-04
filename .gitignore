@@ -1,0 +1,12 @@
+# PDF — 원본 값이 박혀 있을 수 있으므로 커밋하지 않음
+*.pdf
+
+# 중간 산출물
+*.html
+
+# 도구 환경
+.venv/
+__pycache__/
+
+# macOS
+.DS_Store
