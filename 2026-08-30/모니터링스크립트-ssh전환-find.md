@@ -270,5 +270,5 @@ Tailscale SSH 는 **동작은 했지만** 접속 기록도 안 남고 SELinux �
 □ check_users.sh 도 고치기 (netstat → ss)
 □ sys_monitor CPU 100% 개선 (top -bn2)
 □ awk 연습 (다음 약점)
-□ 외부 서버 ZFS 공부 (find/grep 익혔으니 이제 가능)
+□ <OBS_HOST> 서버 ZFS 공부 (find/grep 익혔으니 이제 가능)
 ```
