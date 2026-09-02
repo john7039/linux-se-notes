@@ -122,11 +122,88 @@ fi
 
 ---
 
+# (오후 추가) logrotate — 로그가 무한정 안 쌓이게
+
+> 5초마다 쌓이는 `sys_monitor.log` 를 어떻게 관리할지 고민하다,
+> **"안 쌓기" 가 아니라 "쌓되 관리하기"** 가 답임을 배웠다. 그 표준 도구가 logrotate.
+
+## 왜 필요한가
+
+```
+가동률 기록 (하루 몇 줄)      → 1년에 22KB. 무시 가능
+sys_monitor.log (5초마다)    → 1년에 1.2GB.  ← 이게 진짜 용량 문제
+```
+
+logrotate = 로그가 일정 주기/크기를 넘으면 **오래된 건 압축·삭제**해서 자동 관리.
+시스템이 이미 쓰고 있다 (`/etc/logrotate.d/` 에 dnf·firewalld·wtmp 등).
+
+## 규칙 파일 문법
+
+기존 예제(`/etc/logrotate.d/hawkey.log`)를 참고해 직접 작성.
+
+```
+/home/miniserver/system_monitor.log {
+    daily          # 매일 회전 (weekly=매주)
+    rotate 7       # 7개까지 보관 → 8일째부터 삭제 ★ 용량 관리의 핵심
+    compress       # 오래된 건 .gz 압축 (텍스트는 90% 절감)
+    missingok      # 파일 없어도 에러 안 냄
+    notifempty     # 비어 있으면 회전 안 함
+    create         # 회전 후 빈 로그 새로 생성 ★ 이걸 빠뜨렸다 고침
+}
+```
+
+- **경로는 전체 경로**로 (`~` 는 logrotate 가 못 알아들음)
+
+## 실행·검사 명령
+
+```bash
+logrotate -d 규칙파일                    # 검사만 (실제 회전 X, debug)
+logrotate -f -s ~/logrotate.status 규칙파일   # 강제 회전
+```
+
+- `-s ~/logrotate.status` : 상태 파일을 홈에. 안 그러면 `/var/lib/logrotate/` 에
+  쓰려다 **허가 거부** (일반 사용자라). → `-s` 로 회피
+
+## 회전 결과 (눈으로 확인)
+
+```
+system_monitor.log        0바이트   ← create 가 만든 새 빈 파일
+system_monitor.log.1.gz   방금 것    ← 원본이 압축돼 회전
+system_monitor.log.2.gz   이전 것    ← 번호가 밀림 (7 넘으면 삭제)
+```
+
+`zcat system_monitor.log.1.gz` 로 풀어보니 원본 내용이 그대로 압축돼 있었다.
+
+## ⭐ 겪은 함정 (이게 학습)
+
+```
+① 옵션 뒤에 한글 주석을 붙임
+   daily          매일 회전    →  error: line 2 lines must begin with a keyword
+   → 설정엔 옵션만. 주석은 # 로 별도 줄에
+
+② create 를 빠뜨림
+   회전은 됐는데(.gz 생김) 새 빈 로그가 안 생김
+   → create 넣으니 해결. "없으면 어떻게 되는지" 를 직접 봄
+
+③ 상태 파일 권한 거부
+   /var/lib/logrotate/ 는 root 만 → -s 로 홈에 두어 회피
+```
+
+## 배운 원칙
+
+```
+"로그를 안 쌓는다" 가 아니라 "쌓되 자동으로 관리한다"
+→ rotate N 개 · compress 로 용량 상한을 건다
+→ 실무의 nginx·앱 로그가 다 이렇게 관리됨
+```
+
+---
+
 # 남은 것
 
 ```
 □ 가동률 % 계산 (제대로) — down 시간 합산, awk 산술 (다음 도전)
-□ logrotate — sys_monitor.log 관리 (지난번 갈림길)
+□ logrotate 를 /etc/logrotate.d/ 에 넣어 자동 실행 (지금은 수동 테스트만)
 □ 재부팅 테스트 — UTM VM 자동 시작 (24시간 자동화 최종 조각)
 □ 맥 미니 프롬프트 색 구분
 ```
